@@ -11,6 +11,7 @@ from .tokenizer import WordTokenizer
 from .torch_builder import PRESETS
 from .cardstack import CardStackConfig, CardStackLM, train_next_character
 from .chat_server import serve_chat
+from .quantizer import quantize_hf_to_gguf, quantizer_status
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Static application-binary inspector. Never executes targets.")
@@ -49,6 +50,16 @@ def main() -> None:
     chat_cmd.add_argument("model")
     chat_cmd.add_argument("--port", type=int, default=8765)
     chat_cmd.add_argument("--no-browser", action="store_true")
+    quantize_cmd = commands.add_parser("quantize", help="convert a local Hugging Face model folder to GGUF using llama.cpp")
+    quantize_cmd.add_argument("model_folder")
+    quantize_cmd.add_argument("--output", required=True)
+    quantize_cmd.add_argument("--level", default="Q4_K_M")
+    quantize_cmd.add_argument("--converter", help="path to llama.cpp convert_hf_to_gguf.py")
+    quantize_cmd.add_argument("--llama-quantize", dest="llama_quantize", help="path to llama-quantize executable")
+    quantize_cmd.add_argument("--keep-f16", action="store_true")
+    quantizer_cmd = commands.add_parser("quantizer-status", help="check for required local llama.cpp tools")
+    quantizer_cmd.add_argument("--converter")
+    quantizer_cmd.add_argument("--llama-quantize", dest="llama_quantize")
     args = parser.parse_args()
     if args.command == "inspect":
         result = inspect_file(args.file, args.strings)
@@ -75,6 +86,10 @@ def main() -> None:
     elif args.command == "chat":
         serve_chat(args.model, port=args.port, open_browser=not args.no_browser)
         return
+    elif args.command == "quantize":
+        result = quantize_hf_to_gguf(args.model_folder, args.output, quantization=args.level, converter=args.converter, llama_quantize=args.llama_quantize, keep_f16=args.keep_f16)
+    elif args.command == "quantizer-status":
+        result = quantizer_status(converter=args.converter, llama_quantize=args.llama_quantize)
     else:
         result = PRESETS[args.name]
     print(json.dumps(result, indent=2))
