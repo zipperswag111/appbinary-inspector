@@ -6,4 +6,4 @@ from .tokenizer import WordTokenizer
 from .cardstack import CardStackConfig, CardStackLM, train_next_character
 
 __all__ = ["inspect_file", "extract_embedded", "extract_binary_parts", "WordTokenizer", "CardStackConfig", "CardStackLM", "train_next_character"]
-__version__ = "0.4.0"
+__version__ = "0.5.0"
