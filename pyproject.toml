@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "appbinary-inspector"
-version = "0.6.0"
+version = "0.7.0"
 description = "Open-source lazy-card character model plus static binary inspection tools."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -19,6 +19,8 @@ dependencies = []
 
 [project.optional-dependencies]
 torch = ["torch>=2.1"]
+huggingface = ["transformers>=4.45", "accelerate>=0.30", "huggingface_hub>=0.25"]
+huggingface-4bit = ["transformers>=4.45", "accelerate>=0.30", "huggingface_hub>=0.25", "bitsandbytes>=0.43"]
 
 [project.scripts]
 appbin = "appbinary_inspector.cli:main"
