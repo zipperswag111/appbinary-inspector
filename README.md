@@ -104,6 +104,23 @@ This reduces active model-card memory. It does not make a dense, unmodified
 70B model fit instantly on a low-VRAM GPU: disk bandwidth and CPU/GPU transfer
 time become the tradeoff, and models need to be trained for sparse routing.
 
+## Convert a large model for low VRAM
+
+`appbin quantize` creates a 4-bit GGUF for compatible locally downloaded
+Hugging Face model folders. GGUF runs in llama.cpp and apps such as LM Studio,
+where CPU and SSD offload can be used instead of requiring large VRAM.
+
+Install a current llama.cpp build first. The command needs its
+`convert_hf_to_gguf.py` script and `llama-quantize` executable:
+
+```bash
+appbin quantize C:\\models\\DeepSeek-R1-Distill-Qwen-32B --output C:\\models\\deepseek-32b-q4.gguf --level Q4_K_M --converter C:\\llama.cpp\\convert_hf_to_gguf.py --llama-quantize C:\\llama.cpp\\build\\bin\\Release\\llama-quantize.exe
+```
+
+`Q4_K_M` is the recommended start. A 32B Q4 model still needs roughly 18–22 GB
+of disk space and substantial system RAM, but does not require a large GPU.
+Conversion temporarily needs extra disk space for an F16 GGUF.
+
 ## PyTorch models
 
 Install optional PyTorch support:
