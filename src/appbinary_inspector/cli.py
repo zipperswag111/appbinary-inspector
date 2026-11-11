@@ -9,6 +9,7 @@ from .extract import extract_embedded
 from .extract import extract_binary_parts
 from .tokenizer import WordTokenizer
 from .torch_builder import PRESETS
+from .cardstack import CardStackConfig, CardStackLM, train_next_character
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Static application-binary inspector. Never executes targets.")
@@ -28,6 +29,21 @@ def main() -> None:
     tokenize_cmd.add_argument("--max-vocab", type=int, default=20_000)
     preset_cmd = commands.add_parser("model-template", help="print a PyTorch model configuration preset")
     preset_cmd.add_argument("name", choices=sorted(PRESETS))
+    card_create = commands.add_parser("card-create", help="create a disk-paged character model")
+    card_create.add_argument("--output", required=True)
+    card_create.add_argument("--width", type=int, default=128)
+    card_create.add_argument("--layers", type=int, default=4)
+    card_create.add_argument("--cards", type=int, default=8)
+    card_create.add_argument("--active-cards", type=int, default=2)
+    card_create.add_argument("--cache-cards", type=int, default=4)
+    card_train = commands.add_parser("card-train", help="train a CardStack model from text")
+    card_train.add_argument("model")
+    card_train.add_argument("text_file")
+    card_train.add_argument("--steps", type=int, default=500)
+    card_generate = commands.add_parser("card-generate", help="generate one character at a time from disk-paged cards")
+    card_generate.add_argument("model")
+    card_generate.add_argument("prompt")
+    card_generate.add_argument("--characters", type=int, default=80)
     args = parser.parse_args()
     if args.command == "inspect":
         result = inspect_file(args.file, args.strings)
@@ -40,6 +56,17 @@ def main() -> None:
         tokenizer = WordTokenizer().fit([text], max_vocab=args.max_vocab)
         tokenizer.save(args.vocab)
         result = {"vocabulary_path": args.vocab, "vocabulary_size": len(tokenizer.vocabulary), "tokens": tokenizer.tokenize(text), "ids": tokenizer.encode(text)}
+    elif args.command == "card-create":
+        config = CardStackConfig(width=args.width, layers=args.layers, cards_per_layer=args.cards, active_cards=args.active_cards, cache_cards=args.cache_cards)
+        CardStackLM(config).save(args.output)
+        result = {"model": args.output, "config": config.__dict__, "note": "Cards were saved in 4-bit files. Train before expecting useful output."}
+    elif args.command == "card-train":
+        model = CardStackLM.load_for_training(args.model)
+        losses = train_next_character(model, Path(args.text_file).read_text(encoding="utf-8", errors="replace"), steps=args.steps)
+        model.save(args.model)
+        result = {"model": args.model, "steps": args.steps, "loss_samples": losses}
+    elif args.command == "card-generate":
+        result = {"text": CardStackLM.load(args.model).generate(args.prompt, new_characters=args.characters)}
     else:
         result = PRESETS[args.name]
     print(json.dumps(result, indent=2))
