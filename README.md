@@ -57,6 +57,15 @@ appbin card-train my-card-model training.txt --steps 500
 appbin card-generate my-card-model "Hello" --characters 80
 ```
 
+## Text chat interface
+
+Open a local chat box after training a model. It binds only to your computer,
+opens in your browser, and never sends prompts to a remote service.
+
+```bash
+appbin chat my-card-model
+```
+
 This reduces active model-card memory. It does not make a dense, unmodified
 70B model fit instantly on a low-VRAM GPU: disk bandwidth and CPU/GPU transfer
 time become the tradeoff, and models need to be trained for sparse routing.
