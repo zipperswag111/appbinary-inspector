@@ -10,6 +10,7 @@ from .extract import extract_binary_parts
 from .tokenizer import WordTokenizer
 from .torch_builder import PRESETS
 from .cardstack import CardStackConfig, CardStackLM, train_next_character
+from .chat_server import serve_chat
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Static application-binary inspector. Never executes targets.")
@@ -44,6 +45,10 @@ def main() -> None:
     card_generate.add_argument("model")
     card_generate.add_argument("prompt")
     card_generate.add_argument("--characters", type=int, default=80)
+    chat_cmd = commands.add_parser("chat", help="open a local browser chat box for a trained CardStack model")
+    chat_cmd.add_argument("model")
+    chat_cmd.add_argument("--port", type=int, default=8765)
+    chat_cmd.add_argument("--no-browser", action="store_true")
     args = parser.parse_args()
     if args.command == "inspect":
         result = inspect_file(args.file, args.strings)
@@ -67,6 +72,9 @@ def main() -> None:
         result = {"model": args.model, "steps": args.steps, "loss_samples": losses}
     elif args.command == "card-generate":
         result = {"text": CardStackLM.load(args.model).generate(args.prompt, new_characters=args.characters)}
+    elif args.command == "chat":
+        serve_chat(args.model, port=args.port, open_browser=not args.no_browser)
+        return
     else:
         result = PRESETS[args.name]
     print(json.dumps(result, indent=2))
