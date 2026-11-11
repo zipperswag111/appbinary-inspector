@@ -1,4 +1,4 @@
-"""Small Python API for using a disk-paged CardStack model in normal code."""
+"""Simple Python API for CardStack bundles and Hugging Face causal language models."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -6,18 +6,51 @@ from pathlib import Path
 from .cardstack import CardStackLM
 
 
-class Card:
-    """A callable local text model.
+class HuggingFaceCard:
+    """Callable wrapper for standard Hub IDs or local Transformers model folders."""
 
-    Example:
-        mycard = appbincardcr("my-card-model")
-        reply = mycard("Explain gravity", output=True)
-    """
+    def __init__(self, model_id: str | Path, *, device_map: str | dict | None = "auto", load_in_4bit: bool = False, trust_remote_code: bool = False, cache_dir: str | Path | None = None, max_memory: dict | None = None) -> None:
+        try:
+            from transformers import AutoModelForCausalLM, AutoTokenizer
+        except ImportError as error:
+            raise RuntimeError('Hugging Face support needs: pip install "appbinary-inspector[huggingface]"') from error
+        options = {"device_map": device_map, "trust_remote_code": trust_remote_code, "cache_dir": str(cache_dir) if cache_dir else None, "max_memory": max_memory, "low_cpu_mem_usage": True, "torch_dtype": "auto"}
+        options = {key: value for key, value in options.items() if value is not None}
+        if load_in_4bit:
+            try:
+                from transformers import BitsAndBytesConfig
+            except ImportError as error:
+                raise RuntimeError('4-bit loading needs: pip install "appbinary-inspector[huggingface-4bit]"') from error
+            options["quantization_config"] = BitsAndBytesConfig(load_in_4bit=True)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=trust_remote_code, cache_dir=cache_dir)
+        self.model = AutoModelForCausalLM.from_pretrained(model_id, **options)
+        if self.tokenizer.pad_token_id is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+
+    def __call__(self, text: str, output: bool = False, characters: int = 180, temperature: float = 0.8, system: str | None = None) -> str:
+        prompt = text
+        if system and getattr(self.tokenizer, "chat_template", None):
+            prompt = self.tokenizer.apply_chat_template([{"role": "system", "content": system}, {"role": "user", "content": text}], tokenize=False, add_generation_prompt=True)
+        inputs = self.tokenizer(prompt, return_tensors="pt")
+        device = next(self.model.parameters()).device
+        inputs = {name: value.to(device) for name, value in inputs.items()}
+        generated = self.model.generate(**inputs, max_new_tokens=max(1, characters), do_sample=temperature > 0, temperature=max(temperature, 1e-5), pad_token_id=self.tokenizer.pad_token_id)
+        reply = self.tokenizer.decode(generated[0, inputs["input_ids"].shape[1]:], skip_special_tokens=True)
+        if output:
+            print(reply)
+        return reply
+
+    def reply(self, text: str, **options) -> str:
+        return self(text, **options)
+
+
+class Card:
+    """Callable wrapper for a CardStack local model bundle."""
 
     def __init__(self, model: str | Path | CardStackLM) -> None:
         self.model = CardStackLM.load(model) if isinstance(model, (str, Path)) else model
 
-    def __call__(self, text: str, output: bool = False, characters: int = 180, temperature: float = 0.8) -> str:
+    def __call__(self, text: str, output: bool = False, characters: int = 180, temperature: float = 0.8, **_ignored) -> str:
         reply = self.model.generate(text, new_characters=characters, temperature=temperature)
         if output:
             print(reply)
@@ -27,11 +60,24 @@ class Card:
         return self(text, **options)
 
 
-def appbincardcr(mycard: str | Path | CardStackLM | Card, text: str | None = None, output: bool = False, **options):
-    """Create or call a CardStack text model with one short function.
+def _is_cardstack_bundle(value: str | Path) -> bool:
+    folder = Path(value)
+    return folder.is_dir() and (folder / "base.pt").is_file() and (folder / "config.json").is_file()
 
-    ``appbincardcr("my-card-model")`` returns a reusable card.
-    ``appbincardcr(mycard, "Hello", output=True)`` generates and prints text.
+
+def appbincardcr(mycard, text: str | None = None, output: bool = False, backend: str = "auto", **options):
+    """Create or call a CardStack or Hugging Face model.
+
+    ``appbincardcr("my-card-model")`` loads CardStack.
+    ``appbincardcr("Qwen/Qwen2.5-1.5B-Instruct")`` loads Hugging Face.
     """
-    card = mycard if isinstance(mycard, Card) else Card(mycard)
+    if backend not in {"auto", "cardstack", "huggingface"}:
+        raise ValueError("backend must be auto, cardstack, or huggingface")
+    if isinstance(mycard, (Card, HuggingFaceCard)):
+        card = mycard
+    elif backend == "cardstack" or (backend == "auto" and isinstance(mycard, (str, Path)) and _is_cardstack_bundle(mycard)):
+        card = Card(mycard)
+    else:
+        card = HuggingFaceCard(mycard, **options)
+        options = {}
     return card if text is None else card(text, output=output, **options)
