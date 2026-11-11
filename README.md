@@ -80,6 +80,26 @@ reply = mycard("Explain gravity", output=True)
 reply = appbincardcr(mycard, "Explain gravity", output=True)
 ```
 
+## Hugging Face models
+
+Hub IDs and local Transformers directories work through the same API.
+
+```python
+from appbinary_inspector import appbincardcr
+
+mycard = appbincardcr(
+    "Qwen/Qwen2.5-1.5B-Instruct",
+    backend="huggingface",
+    device_map="auto",
+)
+mycard("Explain gravity", output=True)
+```
+
+Install support with `pip install "appbinary-inspector[huggingface]"`.
+For CUDA 4-bit loading, install `appbinary-inspector[huggingface-4bit]` and
+pass `load_in_4bit=True`. Standard Hugging Face models keep their original
+dense layout; only models trained or converted for CardStack use disk-card paging.
+
 This reduces active model-card memory. It does not make a dense, unmodified
 70B model fit instantly on a low-VRAM GPU: disk bandwidth and CPU/GPU transfer
 time become the tradeoff, and models need to be trained for sparse routing.
