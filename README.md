@@ -66,6 +66,20 @@ opens in your browser, and never sends prompts to a remote service.
 appbin chat my-card-model
 ```
 
+## Python import API
+
+Use the model from normal Python code without a terminal command interface:
+
+```python
+from appbinary_inspector import appbincardcr
+
+mycard = appbincardcr("my-card-model")
+reply = mycard("Explain gravity", output=True)
+
+# Or call it in one line:
+reply = appbincardcr(mycard, "Explain gravity", output=True)
+```
+
 This reduces active model-card memory. It does not make a dense, unmodified
 70B model fit instantly on a low-VRAM GPU: disk bandwidth and CPU/GPU transfer
 time become the tradeoff, and models need to be trained for sparse routing.
