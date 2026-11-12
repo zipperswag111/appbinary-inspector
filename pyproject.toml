@@ -3,9 +3,9 @@ requires = ["hatchling>=1.25"]
 build-backend = "hatchling.build"
 
 [project]
-name = "appbinary-inspector"
-version = "0.8.0"
-description = "Open-source lazy-card character model plus static binary inspection tools."
+name = "MathAdvPy"
+version = "1.0.0"
+description = "Math tools for algebra, geometry, trigonometry, precalculus, calculus, and statistics."
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
@@ -17,13 +17,8 @@ classifiers = [
 ]
 dependencies = []
 
-[project.optional-dependencies]
-torch = ["torch>=2.1"]
-huggingface = ["transformers>=4.45", "accelerate>=0.30", "huggingface_hub>=0.25"]
-huggingface-4bit = ["transformers>=4.45", "accelerate>=0.30", "huggingface_hub>=0.25", "bitsandbytes>=0.43"]
-
 [project.scripts]
-appbin = "appbinary_inspector.cli:main"
+mathadv = "mathadvpy.cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/appbinary_inspector"]
+packages = ["src/mathadvpy"]
